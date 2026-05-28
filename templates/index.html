@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>StoicGPT — The Oracle</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0e0c0a;
+      --surface:   #161410;
+      --border:    #2e2820;
+      --gold:      #c9a84c;
+      --gold-dim:  #7a6530;
+      --text:      #d4c9b0;
+      --text-dim:  #7a7060;
+      --user-bg:   #1a1710;
+      --oracle-bg: #120f0c;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'EB Garamond', serif;
+      font-size: 17px;
+    }
+
+    /* ── Layout ── */
+    .layout {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      max-width: 780px;
+      margin: 0 auto;
+    }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+      padding: 28px 20px 18px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    header h1 {
+      font-family: 'Cinzel', serif;
+      font-size: 1.9rem;
+      letter-spacing: 0.12em;
+      color: var(--gold);
+    }
+    header p {
+      margin-top: 6px;
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      font-style: italic;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── Chat history ── */
+    #chat {
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    #chat::-webkit-scrollbar { width: 5px; }
+    #chat::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    /* ── Message bubbles ── */
+    .msg {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-width: 92%;
+    }
+    .msg.user  { align-self: flex-end; align-items: flex-end; }
+    .msg.oracle { align-self: flex-start; align-items: flex-start; }
+
+    .msg .label {
+      font-family: 'Cinzel', serif;
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      color: var(--text-dim);
+    }
+    .msg.oracle .label { color: var(--gold-dim); }
+
+    .bubble {
+      padding: 13px 18px;
+      border-radius: 3px;
+      line-height: 1.75;
+      border: 1px solid var(--border);
+    }
+    .msg.user  .bubble { background: var(--user-bg);   border-color: #2a2418; }
+    .msg.oracle .bubble { background: var(--oracle-bg); border-color: #251f16; }
+
+    /* typewriter cursor */
+    .cursor::after {
+      content: '▍';
+      color: var(--gold);
+      animation: blink 0.9s step-end infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* ── Divider ── */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--text-dim);
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Input area ── */
+    .input-area {
+      border-top: 1px solid var(--border);
+      padding: 16px 20px 20px;
+      flex-shrink: 0;
+      background: var(--surface);
+    }
+    .input-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+    textarea {
+      flex: 1;
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 11px 14px;
+      font-family: 'EB Garamond', serif;
+      font-size: 1rem;
+      resize: none;
+      outline: none;
+      line-height: 1.6;
+      max-height: 140px;
+      transition: border-color 0.2s;
+    }
+    textarea:focus { border-color: var(--gold-dim); }
+    textarea::placeholder { color: var(--text-dim); font-style: italic; }
+
+    button#send-btn {
+      background: transparent;
+      border: 1px solid var(--gold-dim);
+      color: var(--gold);
+      font-family: 'Cinzel', serif;
+      font-size: 0.75rem;
+      letter-spacing: 0.12em;
+      padding: 10px 18px;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+      white-space: nowrap;
+    }
+    button#send-btn:hover  { background: var(--gold-dim); color: var(--bg); }
+    button#send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .hint {
+      margin-top: 8px;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      text-align: center;
+      font-style: italic;
+    }
+
+    /* ── Empty state ── */
+    #empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      color: var(--text-dim);
+      font-style: italic;
+      text-align: center;
+      padding: 40px;
+    }
+    #empty-state .ornament {
+      font-size: 2.2rem;
+      color: var(--gold-dim);
+      line-height: 1;
+    }
+    #empty-state p { font-size: 0.95rem; max-width: 340px; line-height: 1.7; }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+  <header>
+    <h1>STOICGPT</h1>
+    <p>Consult the wisdom of the ancients</p>
+  </header>
+
+  <div id="chat">
+    <div id="empty-state">
+      <div class="ornament">⚖</div>
+      <p>The Oracle awaits your question.<br/>Speak, and the Stoics shall answer.</p>
+    </div>
+  </div>
+
+  <div class="input-area">
+    <div class="input-row">
+      <textarea id="prompt-input" rows="1" placeholder="Ask the Oracle…" maxlength="500"></textarea>
+      <button id="send-btn">CONSULT</button>
+    </div>
+    <p class="hint">Press Enter to send · Shift+Enter for new line</p>
+  </div>
+
+</div>
+
+<script>
+  const chat      = document.getElementById('chat');
+  const input     = document.getElementById('prompt-input');
+  const sendBtn   = document.getElementById('send-btn');
+  const emptyState = document.getElementById('empty-state');
+
+  // auto-resize textarea
+  input.addEventListener('input', () => {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 140) + 'px';
+  });
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  });
+  sendBtn.addEventListener('click', sendMessage);
+
+  function addMessage(role, text) {
+    if (emptyState) emptyState.remove();
+
+    const wrap = document.createElement('div');
+    wrap.className = `msg ${role}`;
+
+    const label = document.createElement('div');
+    label.className = 'label';
+    label.textContent = role === 'user' ? 'YOU' : 'THE ORACLE';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = text;
+
+    wrap.appendChild(label);
+    wrap.appendChild(bubble);
+    chat.appendChild(wrap);
+    chat.scrollTop = chat.scrollHeight;
+    return bubble;
+  }
+
+  function addDivider() {
+    const d = document.createElement('div');
+    d.className = 'divider';
+    d.textContent = '✦';
+    chat.appendChild(d);
+  }
+
+  function typewrite(bubble, text, done) {
+    bubble.textContent = '';
+    bubble.classList.add('cursor');
+    let i = 0;
+    const speed = Math.max(18, Math.min(40, 3000 / text.length));
+    const tick = () => {
+      if (i < text.length) {
+        bubble.textContent += text[i++];
+        chat.scrollTop = chat.scrollHeight;
+        setTimeout(tick, speed);
+      } else {
+        bubble.classList.remove('cursor');
+        if (done) done();
+      }
+    };
+    tick();
+  }
+
+  async function sendMessage() {
+    const prompt = input.value.trim();
+    if (!prompt || sendBtn.disabled) return;
+
+    addMessage('user', prompt);
+    addDivider();
+
+    input.value = '';
+    input.style.height = 'auto';
+    sendBtn.disabled = true;
+
+    const oracleBubble = addMessage('oracle', '…');
+    oracleBubble.classList.add('cursor');
+
+    try {
+      const res = await fetch('/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      });
+      const data = await res.json();
+      const reply = data.response || data.error || 'The Oracle is silent.';
+
+      oracleBubble.classList.remove('cursor');
+      typewrite(oracleBubble, reply, () => { sendBtn.disabled = false; input.focus(); });
+
+    } catch {
+      oracleBubble.classList.remove('cursor');
+      oracleBubble.textContent = 'The Oracle could not be reached.';
+      sendBtn.disabled = false;
+    }
+
+    addDivider();
+  }
+</script>
+</body>
+</html>

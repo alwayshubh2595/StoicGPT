@@ -1,0 +1,6 @@
+model.pth
+__pycache__/
+*.pyc
+*.pyo
+.env
+corpus.txt
