@@ -56,22 +56,20 @@ class TransformerBlock(nn.Module):
         self.norm2 = LayerNorm(cfg["emb_dim"])
         self.drop_shortcut = nn.Dropout(cfg["drop_rate"])
 
-    def forward(self, x):
-        # Shortcut connection for attention block
+    def forward(self, x, kv_cache=None):
         shortcut = x
         x = self.norm1(x)
-        x = self.att(x)   # Shape [batch_size, num_tokens, emb_size]
+        x, updated_cache = self.att(x, kv_cache=kv_cache)
         x = self.drop_shortcut(x)
-        x = x + shortcut  # Add the original input back
+        x = x + shortcut
 
-        # Shortcut connection for feed-forward block
         shortcut = x
         x = self.norm2(x)
         x = self.ff(x)
         x = self.drop_shortcut(x)
-        x = x + shortcut  # Add the original input back
+        x = x + shortcut
 
-        return x
+        return x, updated_cache
 
 
 class GPTModel(nn.Module):
@@ -81,21 +79,26 @@ class GPTModel(nn.Module):
         self.pos_emb = nn.Embedding(cfg["context_length"], cfg["emb_dim"])
         self.drop_emb = nn.Dropout(cfg["drop_rate"])
 
-        self.trf_blocks = nn.Sequential(
-            *[TransformerBlock(cfg) for _ in range(cfg["n_layers"])])
+        self.trf_blocks = nn.ModuleList(
+            [TransformerBlock(cfg) for _ in range(cfg["n_layers"])])
 
         self.final_norm = LayerNorm(cfg["emb_dim"])
         self.out_head = nn.Linear(cfg["emb_dim"], cfg["vocab_size"], bias=False)
 
-    def forward(self, in_idx):
+    def forward(self, in_idx, kv_caches=None, start_pos=0):
         batch_size, seq_len = in_idx.shape
         tok_embeds = self.tok_emb(in_idx)
-        pos_embeds = self.pos_emb(torch.arange(seq_len, device=in_idx.device))
-        x = tok_embeds + pos_embeds  # Shape [batch_size, num_tokens, emb_size]
+        positions = torch.arange(start_pos, start_pos + seq_len, device=in_idx.device)
+        pos_embeds = self.pos_emb(positions)
+        x = tok_embeds + pos_embeds
         x = self.drop_emb(x)
-        x = self.trf_blocks(x)
+
+        new_caches = []
+        for i, block in enumerate(self.trf_blocks):
+            cache = kv_caches[i] if kv_caches is not None else None
+            x, updated_cache = block(x, kv_cache=cache)
+            new_caches.append(updated_cache)
+
         x = self.final_norm(x)
         logits = self.out_head(x)
-        return logits
-
-
+        return logits, new_caches

@@ -24,25 +24,25 @@ def load_model(path="model.pth", device="cpu"):
 
 def generate(model, tokenizer, prompt, max_new_tokens=200, temperature=0.8, top_k=40, device="cpu"):
     input_ids = torch.tensor(tokenizer.encode(prompt)).unsqueeze(0).to(device)
+    eos_id = tokenizer.encode("<|endoftext|>", allowed_special={"<|endoftext|>"})[0]
+
+    with torch.no_grad():
+        logits, kv_caches = model(input_ids)
 
     for _ in range(max_new_tokens):
-        input_cond = input_ids[:, -GPT_CONFIG["context_length"]:]
-        with torch.no_grad():
-            logits = model(input_cond)
-
-        logits = logits[:, -1, :] / temperature
-
-        # top-k filtering
-        top_k_logits, _ = torch.topk(logits, top_k)
-        logits[logits < top_k_logits[:, -1:]] = -torch.inf
-
-        probs = torch.softmax(logits, dim=-1)
+        next_logits = logits[:, -1, :] / temperature
+        top_k_logits, _ = torch.topk(next_logits, top_k)
+        next_logits[next_logits < top_k_logits[:, -1:]] = -torch.inf
+        probs = torch.softmax(next_logits, dim=-1)
         next_id = torch.multinomial(probs, num_samples=1)
         input_ids = torch.cat((input_ids, next_id), dim=1)
 
-        # stop at end-of-text
-        if next_id.item() == tokenizer.encode("<|endoftext|>", allowed_special={"<|endoftext|>"})[0]:
+        if next_id.item() == eos_id:
             break
+
+        start_pos = input_ids.shape[1] - 1
+        with torch.no_grad():
+            logits, kv_caches = model(next_id, kv_caches=kv_caches, start_pos=start_pos)
 
     return tokenizer.decode(input_ids.squeeze(0).tolist())
 
