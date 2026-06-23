@@ -8,7 +8,7 @@ from transformers import Trainer, TrainingArguments
 
 MODEL_ID = "Qwen/Qwen2.5-1.5B-Instruct"
 OUTPUT_DIR = "stoicgpt-qwen-qlora"
-QA_FILE = "stoic_qa_chat.jsonl"
+QA_FILE = "data/stoic_qa_chat.jsonl"
 
 
 def load_dataset():

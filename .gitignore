@@ -6,3 +6,4 @@ __pycache__/
 corpus.txt
 .vscode/
 .claude/
+stoic-gpt-qwen-qlora/

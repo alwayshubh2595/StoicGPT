@@ -8,7 +8,7 @@ load_dotenv()
 client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
 STOIC_DIR = "Stoic Knowledge"
-OUTPUT_FILE = "stoic_qa.jsonl"
+OUTPUT_FILE = "data/stoic_qa.jsonl"
 
 SYSTEM_PROMPT = """You are an expert on Stoic philosophy. Given a passage from a Stoic text, generate 3-5 high-quality question-answer pairs.
 
@@ -119,7 +119,7 @@ def main():
             ]
         })
 
-    with open("stoic_qa_chat.jsonl", "w", encoding="utf-8") as f:
+    with open("data/stoic_qa_chat.jsonl", "w", encoding="utf-8") as f:
         for item in formatted:
             f.write(json.dumps(item, ensure_ascii=False) + "\n")
 
