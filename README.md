@@ -1,3 +1,13 @@
+---
+title: StoicGPT
+emoji: ⚖
+colorFrom: yellow
+colorTo: gray
+sdk: docker
+pinned: false
+license: apache-2.0
+---
+
 # StoicGPT
 
 A language model project exploring the full spectrum of LLM development — from building a transformer by hand to fine-tuning a modern open-source model — trained exclusively on ancient Stoic philosophy.
