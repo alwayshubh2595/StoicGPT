@@ -3,8 +3,7 @@ import torch
 from datasets import Dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
-from trl import SFTTrainer
-from transformers import TrainingArguments
+from transformers import Trainer, TrainingArguments
 
 
 MODEL_ID = "Qwen/Qwen2.5-1.5B-Instruct"
@@ -21,9 +20,11 @@ def load_dataset():
     return Dataset.from_list(examples)
 
 
-def format_chat(example, tokenizer):
+def format_and_tokenize(example, tokenizer):
     text = tokenizer.apply_chat_template(example["messages"], tokenize=False)
-    return {"text": text}
+    tokenized = tokenizer(text, truncation=True, max_length=512, padding="max_length")
+    tokenized["labels"] = tokenized["input_ids"].copy()
+    return tokenized
 
 
 def main():
@@ -34,7 +35,7 @@ def main():
 
     print("Loading dataset...")
     dataset = load_dataset()
-    dataset = dataset.map(lambda x: format_chat(x, tokenizer))
+    dataset = dataset.map(lambda x: format_and_tokenize(x, tokenizer), remove_columns=["messages"])
     dataset = dataset.train_test_split(test_size=0.05, seed=42)
     print(f"Train: {len(dataset['train'])} | Val: {len(dataset['test'])}")
 
@@ -86,14 +87,11 @@ def main():
         report_to="none",
     )
 
-    trainer = SFTTrainer(
+    trainer = Trainer(
         model=model,
         args=training_args,
         train_dataset=dataset["train"],
         eval_dataset=dataset["test"],
-        tokenizer=tokenizer,
-        max_seq_length=512,
-        dataset_text_field="text",
     )
 
     print("Starting fine-tuning...")
