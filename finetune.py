@@ -3,7 +3,8 @@ import torch
 from datasets import Dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
-from trl import SFTTrainer, SFTConfig
+from trl import SFTTrainer
+from transformers import TrainingArguments
 
 
 MODEL_ID = "Qwen/Qwen2.5-1.5B-Instruct"
@@ -66,7 +67,7 @@ def main():
     model = get_peft_model(model, lora_config)
     model.print_trainable_parameters()
 
-    training_args = SFTConfig(
+    training_args = TrainingArguments(
         output_dir=OUTPUT_DIR,
         num_train_epochs=3,
         per_device_train_batch_size=4,
@@ -82,8 +83,6 @@ def main():
         save_strategy="steps",
         save_steps=200,
         save_total_limit=2,
-        max_seq_length=512,
-        dataset_text_field="text",
         report_to="none",
     )
 
@@ -92,7 +91,9 @@ def main():
         args=training_args,
         train_dataset=dataset["train"],
         eval_dataset=dataset["test"],
-        processing_class=tokenizer,
+        tokenizer=tokenizer,
+        max_seq_length=512,
+        dataset_text_field="text",
     )
 
     print("Starting fine-tuning...")
