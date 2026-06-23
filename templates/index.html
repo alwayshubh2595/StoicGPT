@@ -1,325 +1,1100 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>StoicGPT — The Oracle</title>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet"/>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --bg:        #0e0c0a;
-      --surface:   #161410;
-      --border:    #2e2820;
-      --gold:      #c9a84c;
-      --gold-dim:  #7a6530;
-      --text:      #d4c9b0;
-      --text-dim:  #7a7060;
-      --user-bg:   #1a1710;
-      --oracle-bg: #120f0c;
-    }
-
-    html, body {
-      height: 100%;
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'EB Garamond', serif;
-      font-size: 17px;
-    }
-
-    /* ── Layout ── */
-    .layout {
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      max-width: 780px;
-      margin: 0 auto;
-    }
-
-    /* ── Header ── */
-    header {
-      text-align: center;
-      padding: 28px 20px 18px;
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-    }
-    header h1 {
-      font-family: 'Cinzel', serif;
-      font-size: 1.9rem;
-      letter-spacing: 0.12em;
-      color: var(--gold);
-    }
-    header p {
-      margin-top: 6px;
-      font-size: 0.85rem;
-      color: var(--text-dim);
-      font-style: italic;
-      letter-spacing: 0.05em;
-    }
-
-    /* ── Chat history ── */
-    #chat {
-      flex: 1;
-      overflow-y: auto;
-      padding: 28px 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-      scrollbar-width: thin;
-      scrollbar-color: var(--border) transparent;
-    }
-    #chat::-webkit-scrollbar { width: 5px; }
-    #chat::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-
-    /* ── Message bubbles ── */
-    .msg {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      max-width: 92%;
-    }
-    .msg.user  { align-self: flex-end; align-items: flex-end; }
-    .msg.oracle { align-self: flex-start; align-items: flex-start; }
-
-    .msg .label {
-      font-family: 'Cinzel', serif;
-      font-size: 0.7rem;
-      letter-spacing: 0.15em;
-      color: var(--text-dim);
-    }
-    .msg.oracle .label { color: var(--gold-dim); }
-
-    .bubble {
-      padding: 13px 18px;
-      border-radius: 3px;
-      line-height: 1.75;
-      border: 1px solid var(--border);
-    }
-    .msg.user  .bubble { background: var(--user-bg);   border-color: #2a2418; }
-    .msg.oracle .bubble { background: var(--oracle-bg); border-color: #251f16; }
-
-    /* typewriter cursor */
-    .cursor::after {
-      content: '▍';
-      color: var(--gold);
-      animation: blink 0.9s step-end infinite;
-    }
-    @keyframes blink { 50% { opacity: 0; } }
-
-    /* ── Divider ── */
-    .divider {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      color: var(--text-dim);
-      font-size: 0.75rem;
-      letter-spacing: 0.1em;
-    }
-    .divider::before, .divider::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: var(--border);
-    }
-
-    /* ── Input area ── */
-    .input-area {
-      border-top: 1px solid var(--border);
-      padding: 16px 20px 20px;
-      flex-shrink: 0;
-      background: var(--surface);
-    }
-    .input-row {
-      display: flex;
-      gap: 10px;
-      align-items: flex-end;
-    }
-    textarea {
-      flex: 1;
-      background: var(--bg);
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: 3px;
-      padding: 11px 14px;
-      font-family: 'EB Garamond', serif;
-      font-size: 1rem;
-      resize: none;
-      outline: none;
-      line-height: 1.6;
-      max-height: 140px;
-      transition: border-color 0.2s;
-    }
-    textarea:focus { border-color: var(--gold-dim); }
-    textarea::placeholder { color: var(--text-dim); font-style: italic; }
-
-    button#send-btn {
-      background: transparent;
-      border: 1px solid var(--gold-dim);
-      color: var(--gold);
-      font-family: 'Cinzel', serif;
-      font-size: 0.75rem;
-      letter-spacing: 0.12em;
-      padding: 10px 18px;
-      border-radius: 3px;
-      cursor: pointer;
-      transition: background 0.2s, color 0.2s;
-      white-space: nowrap;
-    }
-    button#send-btn:hover  { background: var(--gold-dim); color: var(--bg); }
-    button#send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-    .hint {
-      margin-top: 8px;
-      font-size: 0.75rem;
-      color: var(--text-dim);
-      text-align: center;
-      font-style: italic;
-    }
-
-    /* ── Empty state ── */
-    #empty-state {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 14px;
-      color: var(--text-dim);
-      font-style: italic;
-      text-align: center;
-      padding: 40px;
-    }
-    #empty-state .ornament {
-      font-size: 2.2rem;
-      color: var(--gold-dim);
-      line-height: 1;
-    }
-    #empty-state p { font-size: 0.95rem; max-width: 340px; line-height: 1.7; }
-  </style>
+  <title>StoicGPT</title>
+  <link rel="stylesheet" href="/static/css/style.css"/>
 </head>
 <body>
-<div class="layout">
 
-  <header>
+<!-- ═══════ NAV ═══════ -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="#" class="nav-logo" onclick="showPage('home')">STOICGPT</a>
+    <button class="nav-hamburger" onclick="toggleMenu()">&#9776;</button>
+    <ul class="nav-links" id="nav-links">
+      <li><a href="#" class="active" onclick="showPage('home')">Home</a></li>
+      <li><a href="#" onclick="showPage('chat')">Chat</a></li>
+      <li><a href="#" onclick="showPage('architecture')">Architecture</a></li>
+      <li><a href="#" onclick="showPage('stoicism')">Stoicism</a></li>
+      <li><a href="#" onclick="showPage('bibliography')">Bibliography</a></li>
+      <li><a href="#" onclick="showPage('about')">About</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ═══════ HOME ═══════ -->
+<div class="page active" id="page-home">
+  <div class="hero">
+    <div class="hero-ornament">&#9878;</div>
     <h1>STOICGPT</h1>
-    <p>Consult the wisdom of the ancients</p>
-  </header>
+    <p class="hero-subtitle">
+      A language model trained from the ground up on the writings of
+      Marcus Aurelius, Seneca, and Epictetus &mdash; wisdom forged in code,
+      tempered by the ancients.
+    </p>
+    <a href="#" class="hero-cta" onclick="showPage('chat')">CONSULT THE ORACLE</a>
+    <div class="hero-scroll-hint">SCROLL</div>
+  </div>
 
-  <div id="chat">
-    <div id="empty-state">
-      <div class="ornament">⚖</div>
-      <p>The Oracle awaits your question.<br/>Speak, and the Stoics shall answer.</p>
+  <div class="section">
+    <div class="section-label">The Project</div>
+    <div class="section-title">Two Models, One Philosophy</div>
+    <p class="section-text">
+      StoicGPT explores the full spectrum of language model development &mdash;
+      from building a transformer architecture by hand to fine-tuning a modern
+      open-source model with QLoRA. Both models are trained exclusively on ancient
+      Stoic texts.
+    </p>
+
+    <div class="overview-grid">
+      <div class="overview-card">
+        <div class="card-icon" style="color: var(--bronze);">&#9776;</div>
+        <h3>THE FORGE</h3>
+        <p>A 15M parameter GPT built entirely from scratch &mdash; custom attention,
+          embeddings, training loop. Raw and unrefined, it demonstrates a complete
+          understanding of transformer internals.</p>
+      </div>
+      <div class="overview-card">
+        <div class="card-icon" style="color: var(--gold);">&#9878;</div>
+        <h3>THE ORACLE</h3>
+        <p>Qwen 2.5 1.5B fine-tuned with QLoRA on 7,348 Stoic Q&amp;A pairs
+          generated from the primary corpus. Speaks with clarity and wisdom,
+          grounded in the original texts.</p>
+      </div>
+      <div class="overview-card">
+        <div class="card-icon" style="color: var(--gold-dim);">&#9997;</div>
+        <h3>THE CORPUS</h3>
+        <p>400,000+ tokens of Stoic philosophy &mdash; Meditations, Letters to Lucilius,
+          Seneca&rsquo;s Morals, the Discourses, and the Enchiridion. All public domain
+          translations.</p>
+      </div>
     </div>
   </div>
 
-  <div class="input-area">
-    <div class="input-row">
-      <textarea id="prompt-input" rows="1" placeholder="Ask the Oracle…" maxlength="500"></textarea>
-      <button id="send-btn">CONSULT</button>
+  <div class="section">
+    <div class="stats-bar">
+      <div class="stat-item">
+        <div class="stat-value">15M</div>
+        <div class="stat-label">PARAMETERS (FORGE)</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value">1.5B</div>
+        <div class="stat-label">PARAMETERS (ORACLE)</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value">400K+</div>
+        <div class="stat-label">TOKENS</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value">7,348</div>
+        <div class="stat-label">QA PAIRS</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value">5</div>
+        <div class="stat-label">SOURCE TEXTS</div>
+      </div>
     </div>
-    <p class="hint">Press Enter to send · Shift+Enter for new line</p>
   </div>
 
+  <div class="section" style="text-align: center;">
+    <div class="section-label">The Journey</div>
+    <div class="section-title">From Raw Text to Oracle</div>
+    <p class="section-text" style="margin: 0 auto 40px;">
+      Data collection &rarr; Tokenization &rarr; Architecture design &rarr;
+      Training from scratch &rarr; Q&amp;A generation &rarr; QLoRA fine-tuning &rarr; Deployment
+    </p>
+    <a href="#" class="hero-cta" style="opacity:1; transform:none;" onclick="showPage('architecture')">EXPLORE THE ARCHITECTURE</a>
+  </div>
+
+  <div class="footer">
+    StoicGPT &mdash; Built by Shubh Srivastava
+  </div>
 </div>
 
+<!-- ═══════ CHAT ═══════ -->
+<div class="page" id="page-chat">
+  <div class="chat-container">
+    <div class="chat-tabs">
+      <button class="chat-tab-btn active" data-tab="oracle">THE ORACLE</button>
+      <button class="chat-tab-btn" data-tab="forge">THE FORGE</button>
+    </div>
+    <div class="chat-tab-desc" id="chat-tab-desc">Fine-tuned Qwen 2.5 1.5B on 7,348 Stoic Q&amp;A pairs</div>
+    <div class="chat-model-stats" id="chat-model-stats">
+      <div>Parameters: <span>15M</span></div>
+      <div>Layers: <span>6</span></div>
+      <div>Context: <span>256</span></div>
+      <div>Built from: <span>scratch</span></div>
+    </div>
+    <div id="chat-messages">
+      <div class="chat-empty oracle" id="chat-empty">
+        <div class="ornament">&#9878;</div>
+        <p>The Oracle awaits your question.<br/>Speak, and the Stoics shall answer.</p>
+      </div>
+    </div>
+    <div class="chat-input-area">
+      <div class="chat-input-row">
+        <textarea id="chat-input" rows="1" placeholder="Ask the Oracle..." maxlength="500"></textarea>
+        <button class="chat-send-btn" id="chat-send">CONSULT</button>
+      </div>
+      <p class="chat-hint">Press Enter to send &middot; Shift+Enter for new line</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ ARCHITECTURE ═══════ -->
+<div class="page" id="page-architecture">
+  <div class="section">
+    <div class="section-label">The Forge &mdash; From Scratch</div>
+    <div class="section-title">Model Architecture</div>
+    <p class="section-text">
+      A decoder-only transformer language model following the GPT-2 architecture
+      (Radford et al., 2019), implemented entirely from scratch in PyTorch. The model
+      uses pre-norm residual connections (Xiong et al., 2020) and learned positional
+      embeddings. All components below were written by hand &mdash; no library abstractions.
+    </p>
+
+    <!-- ── High-level pipeline ── -->
+    <div class="section-label" style="margin-top:40px;">Forward Pass Overview</div>
+    <div class="arch-pipeline" id="arch-pipeline">
+      <div class="arch-block" data-detail="tokenization">
+        <h4>INPUT</h4>
+        <p>Raw Text</p>
+      </div>
+      <div class="arch-arrow">&rarr;</div>
+      <div class="arch-block" data-detail="tokenizer">
+        <h4>BPE TOKENIZER</h4>
+        <p>Text &rarr; Token IDs</p>
+      </div>
+      <div class="arch-arrow">&rarr;</div>
+      <div class="arch-block" data-detail="embedding">
+        <h4>EMBEDDING LAYER</h4>
+        <p>tok_emb + pos_emb</p>
+      </div>
+      <div class="arch-arrow">&rarr;</div>
+      <div class="arch-block active-highlight" data-detail="trf-block">
+        <h4>TRANSFORMER</h4>
+        <p>&times;6 Blocks</p>
+      </div>
+      <div class="arch-arrow">&rarr;</div>
+      <div class="arch-block" data-detail="output-head">
+        <h4>OUTPUT HEAD</h4>
+        <p>Logits &rarr; Next Token</p>
+      </div>
+    </div>
+
+    <!-- ── Section 1: Tokenization ── -->
+    <div class="arch-detail" id="detail-tokenization">
+      <h3>1. Input Representation</h3>
+      <p>Raw text is fed into the model as a string. Before any neural computation, the text
+        must be converted into a numerical representation the model can process. The input
+        string is first split into subword tokens, then each token is mapped to an integer ID
+        from a fixed vocabulary.</p>
+      <p>Example: <code>"virtue is"</code> &rarr; <code>["virt", "ue", " is"]</code> &rarr; <code>[38834, 518, 318]</code></p>
+    </div>
+
+    <div class="arch-detail" id="detail-tokenizer">
+      <h3>2. Byte-Pair Encoding Tokenizer</h3>
+      <p>We use the GPT-2 tokenizer via OpenAI&rsquo;s <code>tiktoken</code> library. Byte-Pair Encoding
+        (BPE) iteratively merges the most frequent pairs of bytes/characters in a training corpus
+        to build a vocabulary of 50,257 subword tokens. This allows the model to handle any text,
+        including rare words, by decomposing them into known subword units.</p>
+      <p>A special <code>&lt;|endoftext|&gt;</code> token (ID 50256) is inserted between documents
+        in the training corpus. This teaches the model to recognize document boundaries and prevents
+        it from generating text that bleeds across unrelated passages.</p>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <div class="label">ALGORITHM</div>
+          <div class="value">Byte-Pair Encoding (BPE)</div>
+        </div>
+        <div class="detail-item">
+          <div class="label">VOCABULARY SIZE</div>
+          <div class="value">50,257 tokens</div>
+        </div>
+        <div class="detail-item">
+          <div class="label">LIBRARY</div>
+          <div class="value">tiktoken (OpenAI)</div>
+        </div>
+        <div class="detail-item">
+          <div class="label">SPECIAL TOKENS</div>
+          <div class="value">&lt;|endoftext|&gt; (ID 50256)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arch-detail" id="detail-embedding">
+      <h3>3. Embedding Layer</h3>
+      <p>The embedding layer transforms discrete token IDs into continuous vector representations.
+        Two separate embedding tables are used:</p>
+      <p><strong>Token Embedding</strong> (<code>tok_emb</code>): A lookup table of shape
+        <code>(50257, 384)</code> mapping each token ID to a 384-dimensional learned vector.
+        These vectors encode semantic meaning &mdash; tokens with similar meanings will have
+        similar vectors after training.</p>
+      <p><strong>Positional Embedding</strong> (<code>pos_emb</code>): A lookup table of shape
+        <code>(256, 384)</code> encoding each position in the sequence (0 through 255). Unlike
+        the sinusoidal encodings in the original Transformer (Vaswani et al., 2017), these are
+        learned parameters, following GPT-2&rsquo;s design.</p>
+      <p>The two embeddings are summed element-wise and passed through a dropout layer
+        (<code>p=0.1</code> during training) for regularization:</p>
+      <p><code>x = Dropout(tok_emb(tokens) + pos_emb(positions))</code></p>
+      <p>Output shape: <code>(batch_size, seq_len, 384)</code></p>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <div class="label">EMBEDDING DIMENSION</div>
+          <div class="value">d_model = 384</div>
+        </div>
+        <div class="detail-item">
+          <div class="label">MAX SEQUENCE LENGTH</div>
+          <div class="value">256 tokens</div>
+        </div>
+        <div class="detail-item">
+          <div class="label">TOKEN EMBEDDING</div>
+          <div class="value">nn.Embedding(50257, 384)</div>
+        </div>
+        <div class="detail-item">
+          <div class="label">POSITIONAL EMBEDDING</div>
+          <div class="value">nn.Embedding(256, 384)</div>
+        </div>
+        <div class="detail-item">
+          <div class="label">EMBEDDING DROPOUT</div>
+          <div class="value">p = 0.1</div>
+        </div>
+        <div class="detail-item">
+          <div class="label">TOTAL EMBEDDING PARAMS</div>
+          <div class="value">~19.4M</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 4: Transformer Block (the big one) ── -->
+    <div class="arch-detail" id="detail-trf-block">
+      <h3>4. Transformer Block (&times;6)</h3>
+      <p>The core of the model is a stack of 6 identical transformer blocks. Each block contains
+        two sub-layers &mdash; a multi-head self-attention mechanism and a position-wise feed-forward
+        network &mdash; both wrapped with pre-norm residual connections. The block structure
+        follows the Pre-LN Transformer variant (Xiong et al., 2020), which applies LayerNorm
+        <em>before</em> each sub-layer rather than after, improving training stability.</p>
+
+      <p>The complete data flow through one transformer block:</p>
+      <p style="text-align:center; color: var(--gold); font-size: 0.95rem; margin: 20px 0; line-height: 2;">
+        <code>x&prime; = x + Dropout(MultiHeadAttention(LayerNorm(x)))</code><br/>
+        <code>x&Prime; = x&prime; + Dropout(FeedForward(LayerNorm(x&prime;)))</code>
+      </p>
+
+      <!-- Sub-component: LayerNorm -->
+      <div style="border: 1px solid var(--border); border-radius: 3px; padding: 24px; margin: 24px 0; background: var(--bg);">
+        <h4 style="font-family: var(--font-display); font-size: 0.8rem; letter-spacing: 0.1em; color: var(--bronze); margin-bottom: 12px;">
+          4a. Layer Normalization
+        </h4>
+        <p>Applied before each sub-layer. Normalizes activations across the embedding dimension
+          with learned scale (&gamma;) and shift (&beta;) parameters. This stabilizes the distribution
+          of intermediate activations, preventing gradient explosion or vanishing across the
+          6-layer stack.</p>
+        <p><code>LayerNorm(x) = &gamma; &middot; (x &minus; &mu;) / &radic;(&sigma;&sup2; + &epsilon;) + &beta;</code></p>
+        <div class="detail-grid" style="margin-top: 12px;">
+          <div class="detail-item">
+            <div class="label">NORMALIZED SHAPE</div>
+            <div class="value">384 (last dim)</div>
+          </div>
+          <div class="detail-item">
+            <div class="label">EPSILON</div>
+            <div class="value">1e-5</div>
+          </div>
+          <div class="detail-item">
+            <div class="label">LEARNED PARAMS</div>
+            <div class="value">&gamma; (scale) + &beta; (shift) = 768</div>
+          </div>
+          <div class="detail-item">
+            <div class="label">VARIANCE</div>
+            <div class="value">Unbiased = False</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sub-component: Multi-Head Attention -->
+      <div style="border: 1px solid var(--border); border-radius: 3px; padding: 24px; margin: 24px 0; background: var(--bg);">
+        <h4 style="font-family: var(--font-display); font-size: 0.8rem; letter-spacing: 0.1em; color: var(--bronze); margin-bottom: 12px;">
+          4b. Multi-Head Causal Self-Attention
+        </h4>
+        <p>The attention mechanism allows each token to aggregate information from all <em>previous</em>
+          tokens in the sequence. It computes three projections of the input &mdash; Queries (Q),
+          Keys (K), and Values (V) &mdash; using learned linear transformations, then computes
+          scaled dot-product attention:</p>
+        <p style="text-align: center; margin: 16px 0;">
+          <code>Attention(Q, K, V) = softmax(Q K&#7488; / &radic;d_k) &middot; V</code>
+        </p>
+        <p><strong>Multi-head mechanism:</strong> The 384-dimensional embedding is split into 6
+          independent heads of 64 dimensions each. Each head learns different attention patterns
+          (e.g., one head might focus on adjacent tokens for local syntax, another on distant tokens
+          for long-range semantics). The outputs of all 6 heads are concatenated and projected
+          back to 384 dimensions via <code>W_out</code>.</p>
+        <p><strong>Causal masking:</strong> An upper-triangular mask fills future positions with
+          <code>-inf</code> before the softmax, ensuring token <em>t</em> can only attend to
+          tokens 0 through <em>t</em>. This is what makes the model autoregressive &mdash; it
+          generates one token at a time, left to right, without peeking ahead.</p>
+        <div class="detail-grid" style="margin-top: 12px;">
+          <div class="detail-item">
+            <div class="label">NUMBER OF HEADS</div>
+            <div class="value">h = 6</div>
+          </div>
+          <div class="detail-item">
+            <div class="label">HEAD DIMENSION</div>
+            <div class="value">d_k = 64 (384 / 6)</div>
+          </div>
+          <div class="detail-item">
+            <div class="label">Q, K, V PROJECTIONS</div>
+            <div class="value">Linear(384, 384) each, no bias</div>
+          </div>
+          <div class="detail-item">
+            <div class="label">OUTPUT PROJECTION</div>
+            <div class="value">Linear(384, 384)</div>
+          </div>
+          <div class="detail-item">
+            <div class="label">ATTENTION DROPOUT</div>
+            <div class="value">p = 0.1</div>
+          </div>
+          <div class="detail-item">
+            <div class="label">MASKING</div>
+            <div class="value">Causal (upper triangular, &minus;&infin;)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sub-component: Residual Connection -->
+      <div style="border: 1px solid var(--border); border-radius: 3px; padding: 24px; margin: 24px 0; background: var(--bg);">
+        <h4 style="font-family: var(--font-display); font-size: 0.8rem; letter-spacing: 0.1em; color: var(--bronze); margin-bottom: 12px;">
+          4c. Residual (Skip) Connections
+        </h4>
+        <p>The output of each sub-layer is added back to its input before being passed to the
+          next sub-layer. This creates a &ldquo;gradient highway&rdquo; &mdash; during backpropagation,
+          gradients can flow directly through the skip connection without being transformed,
+          which is essential for training deep networks. Without residual connections, a 6-layer
+          model would suffer from vanishing gradients and fail to train.</p>
+        <p>A dropout layer (<code>p=0.1</code>) is applied to the sub-layer output before
+          addition, following the original Transformer design.</p>
+      </div>
+
+      <!-- Sub-component: Feed-Forward -->
+      <div style="border: 1px solid var(--border); border-radius: 3px; padding: 24px; margin: 24px 0; background: var(--bg);">
+        <h4 style="font-family: var(--font-display); font-size: 0.8rem; letter-spacing: 0.1em; color: var(--bronze); margin-bottom: 12px;">
+          4d. Position-wise Feed-Forward Network
+        </h4>
+        <p>A two-layer MLP applied independently to each token position. The hidden dimension
+          expands to 4&times; the embedding dimension (1,536), then projects back down. This
+          expansion-contraction pattern gives the model capacity to learn complex transformations
+          at each position. Research suggests this is where the model stores factual knowledge
+          (Geva et al., 2021).</p>
+        <p><code>FFN(x) = W_2 &middot; GELU(W_1 &middot; x + b_1) + b_2</code></p>
+        <p><strong>GELU activation</strong> (Hendrycks &amp; Gimpel, 2016) is a smooth approximation
+          of ReLU that weights inputs by their percentile under a Gaussian distribution. Unlike
+          ReLU&rsquo;s hard cutoff at zero, GELU allows small negative values to pass through,
+          which improves gradient flow.</p>
+        <div class="detail-grid" style="margin-top: 12px;">
+          <div class="detail-item">
+            <div class="label">STRUCTURE</div>
+            <div class="value">Linear(384, 1536) &rarr; GELU &rarr; Linear(1536, 384)</div>
+          </div>
+          <div class="detail-item">
+            <div class="label">EXPANSION FACTOR</div>
+            <div class="value">4&times; (384 &rarr; 1,536 &rarr; 384)</div>
+          </div>
+          <div class="detail-item">
+            <div class="label">ACTIVATION</div>
+            <div class="value">GELU (Gaussian Error Linear Unit)</div>
+          </div>
+          <div class="detail-item">
+            <div class="label">FFN PARAMS PER BLOCK</div>
+            <div class="value">~1.18M</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Block summary -->
+      <div class="detail-grid" style="margin-top: 20px;">
+        <div class="detail-item">
+          <div class="label">TOTAL BLOCKS</div>
+          <div class="value">6 (sequential)</div>
+        </div>
+        <div class="detail-item">
+          <div class="label">ARCHITECTURE VARIANT</div>
+          <div class="value">Pre-LN Transformer</div>
+        </div>
+        <div class="detail-item">
+          <div class="label">PARAMS PER BLOCK</div>
+          <div class="value">~1.8M</div>
+        </div>
+        <div class="detail-item">
+          <div class="label">TOTAL BLOCK PARAMS</div>
+          <div class="value">~10.6M (6 &times; 1.8M)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 5: Output Head ── -->
+    <div class="arch-detail" id="detail-output-head">
+      <h3>5. Output Head</h3>
+      <p>After passing through all 6 transformer blocks, a final LayerNorm is applied to
+        stabilize the representations. Then a linear projection maps from the embedding
+        dimension (384) to the full vocabulary size (50,257), producing a vector of logits
+        &mdash; unnormalized log-probabilities over every possible next token.</p>
+      <p>During training, these logits are compared to the true next token using cross-entropy
+        loss. During inference, we convert logits to probabilities and sample the next token:</p>
+
+      <div style="border: 1px solid var(--border); border-radius: 3px; padding: 24px; margin: 24px 0; background: var(--bg);">
+        <h4 style="font-family: var(--font-display); font-size: 0.8rem; letter-spacing: 0.1em; color: var(--bronze); margin-bottom: 12px;">
+          Decoding Strategy
+        </h4>
+        <p><strong>Temperature scaling</strong> (<code>T=0.8</code>): Divides logits by T before
+          softmax. Lower temperatures sharpen the distribution (more deterministic), higher
+          temperatures flatten it (more creative). We use 0.8 for a balance of coherence
+          and variety.</p>
+        <p><strong>Top-k filtering</strong> (<code>k=40</code>): Only the 40 highest-probability
+          tokens are considered; the rest are masked to <code>-inf</code>. This prevents the model
+          from sampling extremely unlikely tokens that would produce gibberish.</p>
+        <p>The combination: <code>next_token = sample(softmax(top_k(logits / T)))</code></p>
+      </div>
+
+      <div class="detail-grid">
+        <div class="detail-item">
+          <div class="label">FINAL LAYER NORM</div>
+          <div class="value">LayerNorm(384)</div>
+        </div>
+        <div class="detail-item">
+          <div class="label">OUTPUT PROJECTION</div>
+          <div class="value">Linear(384, 50257), no bias</div>
+        </div>
+        <div class="detail-item">
+          <div class="label">LOSS FUNCTION</div>
+          <div class="value">Cross-Entropy (training)</div>
+        </div>
+        <div class="detail-item">
+          <div class="label">OPTIMIZER</div>
+          <div class="value">AdamW (lr=5e-4, wd=0.1)</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="ornament-divider">&#10038; &nbsp; &#10038; &nbsp; &#10038;</div>
+
+  <div class="section">
+    <div class="section-label">The Oracle &mdash; Fine-Tuned</div>
+    <div class="section-title">QLoRA Fine-Tuning Pipeline</div>
+    <p class="section-text">
+      The Oracle uses Qwen 2.5 1.5B-Instruct as a base model, fine-tuned with
+      Quantized Low-Rank Adaptation (QLoRA) on a custom Stoic Q&amp;A dataset.
+    </p>
+
+    <div class="arch-pipeline">
+      <div class="arch-block" data-detail="qlora-base">
+        <h4>BASE MODEL</h4>
+        <p>Qwen 2.5 1.5B</p>
+      </div>
+      <div class="arch-arrow">&rarr;</div>
+      <div class="arch-block" data-detail="qlora-quant">
+        <h4>4-BIT QUANT</h4>
+        <p>NF4 + Double Quant</p>
+      </div>
+      <div class="arch-arrow">&rarr;</div>
+      <div class="arch-block" data-detail="qlora-lora">
+        <h4>LORA ADAPTERS</h4>
+        <p>Rank 16</p>
+      </div>
+      <div class="arch-arrow">&rarr;</div>
+      <div class="arch-block" data-detail="qlora-data">
+        <h4>STOIC QA DATA</h4>
+        <p>7,348 Pairs</p>
+      </div>
+      <div class="arch-arrow">&rarr;</div>
+      <div class="arch-block" data-detail="qlora-train">
+        <h4>TRAINING</h4>
+        <p>3 Epochs</p>
+      </div>
+    </div>
+
+    <div class="arch-detail" id="detail-qlora-base">
+      <h3>Base Model: Qwen 2.5 1.5B-Instruct</h3>
+      <p>An open-source large language model by Alibaba Cloud, pre-trained on multilingual
+        data. The Instruct variant has been aligned for instruction-following, making it
+        an ideal base for task-specific fine-tuning.</p>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <div class="label">PARAMETERS</div>
+          <div class="value">1.5 Billion</div>
+        </div>
+        <div class="detail-item">
+          <div class="label">ARCHITECTURE</div>
+          <div class="value">Decoder-only Transformer</div>
+        </div>
+        <div class="detail-item">
+          <div class="label">CONTEXT LENGTH</div>
+          <div class="value">32,768 tokens</div>
+        </div>
+        <div class="detail-item">
+          <div class="label">LICENSE</div>
+          <div class="value">Apache 2.0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arch-detail" id="detail-qlora-quant">
+      <h3>4-Bit Quantization (NF4)</h3>
+      <p>The base model weights are quantized from 16-bit to 4-bit using the NormalFloat4
+        (NF4) data type &mdash; optimal for normally distributed neural network weights.
+        Double quantization further compresses the quantization constants themselves,
+        reducing memory by ~75% with minimal quality loss.</p>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <div class="label">QUANT TYPE</div>
+          <div class="value">NF4 (NormalFloat4)</div>
+        </div>
+        <div class="detail-item">
+          <div class="label">COMPUTE DTYPE</div>
+          <div class="value">bfloat16</div>
+        </div>
+        <div class="detail-item">
+          <div class="label">DOUBLE QUANT</div>
+          <div class="value">Enabled</div>
+        </div>
+        <div class="detail-item">
+          <div class="label">MEMORY SAVINGS</div>
+          <div class="value">~75% (6GB &rarr; ~1.5GB)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arch-detail" id="detail-qlora-lora">
+      <h3>LoRA Adapters</h3>
+      <p>Instead of updating all 1.5B parameters, LoRA freezes the base model and injects
+        small trainable rank-decomposition matrices into every attention and MLP layer.
+        Only ~0.5% of parameters are trained, making fine-tuning fast and memory-efficient.</p>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <div class="label">RANK (r)</div>
+          <div class="value">16</div>
+        </div>
+        <div class="detail-item">
+          <div class="label">ALPHA</div>
+          <div class="value">32</div>
+        </div>
+        <div class="detail-item">
+          <div class="label">TARGET MODULES</div>
+          <div class="value">q, k, v, o, gate, up, down</div>
+        </div>
+        <div class="detail-item">
+          <div class="label">TRAINABLE PARAMS</div>
+          <div class="value">~7.9M (~0.5%)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arch-detail" id="detail-qlora-data">
+      <h3>Stoic Q&amp;A Dataset</h3>
+      <p>7,348 question-answer pairs generated by sending passages from the primary Stoic
+        corpus to GPT-4o-mini. Each pair is formatted in the chat template with a system
+        prompt establishing the Stoic philosopher persona. The dataset is split 95/5 for
+        training and validation.</p>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <div class="label">TOTAL PAIRS</div>
+          <div class="value">7,348</div>
+        </div>
+        <div class="detail-item">
+          <div class="label">GENERATION MODEL</div>
+          <div class="value">GPT-4o-mini</div>
+        </div>
+        <div class="detail-item">
+          <div class="label">FORMAT</div>
+          <div class="value">Chat (system/user/assistant)</div>
+        </div>
+        <div class="detail-item">
+          <div class="label">SOURCE TEXTS</div>
+          <div class="value">5 Stoic works</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arch-detail" id="detail-qlora-train">
+      <h3>Training Configuration</h3>
+      <p>Fine-tuned for 3 epochs using AdamW optimizer with cosine learning rate scheduling.
+        Trained on an NVIDIA RTX 3090 GPU via RunPod in approximately 25 minutes.</p>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <div class="label">EPOCHS</div>
+          <div class="value">3</div>
+        </div>
+        <div class="detail-item">
+          <div class="label">LEARNING RATE</div>
+          <div class="value">2e-4 (cosine decay)</div>
+        </div>
+        <div class="detail-item">
+          <div class="label">BATCH SIZE</div>
+          <div class="value">4 &times; 4 grad accum = 16</div>
+        </div>
+        <div class="detail-item">
+          <div class="label">HARDWARE</div>
+          <div class="value">NVIDIA RTX 3090 (RunPod)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">StoicGPT &mdash; Built by Shubh Srivastava</div>
+</div>
+
+<!-- ═══════ STOICISM ═══════ -->
+<div class="page" id="page-stoicism">
+  <div class="section">
+    <div class="section-label">Philosophy</div>
+    <div class="section-title">What is Stoicism?</div>
+    <p class="section-text">
+      Stoicism is a school of Hellenistic philosophy founded in Athens by Zeno of Citium
+      around 300 BCE. It teaches that virtue &mdash; the highest good &mdash; is based on
+      knowledge, and that the wise live in harmony with the divine reason that governs
+      nature. Destructive emotions result from errors in judgment, and a sage would not
+      suffer from such emotions.
+    </p>
+
+    <div class="quote-block">
+      &ldquo;The happiness of your life depends upon the quality of your thoughts:
+      therefore, guard accordingly.&rdquo;
+      <cite>&mdash; Marcus Aurelius, Meditations</cite>
+    </div>
+  </div>
+
+  <div class="section" style="padding-top: 0;">
+    <div class="section-label">The Four Virtues</div>
+    <div class="section-title">Pillars of Stoic Ethics</div>
+    <ul class="principles-list">
+      <li>
+        <span class="num">I</span>
+        <div class="content"><strong>Wisdom</strong> (Sophia) &mdash; The ability to navigate complex situations
+          with informed judgment and calm deliberation. Not mere cleverness, but deep understanding
+          of what truly matters.</div>
+      </li>
+      <li>
+        <span class="num">II</span>
+        <div class="content"><strong>Courage</strong> (Andreia) &mdash; Not just physical bravery, but moral
+          courage: the strength to act rightly in the face of fear, pain, or social pressure.
+          To speak truth when silence would be easier.</div>
+      </li>
+      <li>
+        <span class="num">III</span>
+        <div class="content"><strong>Justice</strong> (Dikaiosyne) &mdash; Treating others with fairness,
+          kindness, and good faith. The Stoics believed this was the most important virtue,
+          as it governs our relations with others.</div>
+      </li>
+      <li>
+        <span class="num">IV</span>
+        <div class="content"><strong>Temperance</strong> (Sophrosyne) &mdash; Self-discipline and moderation
+          in all things. The mastery of desire, the governance of appetite, and the practice
+          of restraint.</div>
+      </li>
+    </ul>
+  </div>
+
+  <div class="ornament-divider">&#10038; &nbsp; &#10038; &nbsp; &#10038;</div>
+
+  <div class="section">
+    <div class="section-label">The Philosophers</div>
+    <div class="section-title">Voices in the Corpus</div>
+    <div class="philosophy-grid">
+      <div class="philosopher-card">
+        <h3>Marcus Aurelius</h3>
+        <div class="dates">121&ndash;180 CE &middot; Roman Emperor</div>
+        <p>The philosopher-king. His <em>Meditations</em> were private journals never intended
+          for publication &mdash; raw, unpolished reflections on duty, mortality, and the
+          discipline of perception. He wrote them in Greek during military campaigns along
+          the Danube frontier.</p>
+      </div>
+      <div class="philosopher-card">
+        <h3>Seneca</h3>
+        <div class="dates">c. 4 BCE&ndash;65 CE &middot; Statesman &amp; Tutor</div>
+        <p>Advisor to Emperor Nero and one of Rome&rsquo;s wealthiest men, Seneca wrote with
+          literary elegance about the shortness of life, the management of anger, and the
+          path to tranquility. His <em>Letters to Lucilius</em> are a masterclass in practical
+          philosophy.</p>
+      </div>
+      <div class="philosopher-card">
+        <h3>Epictetus</h3>
+        <div class="dates">c. 50&ndash;135 CE &middot; Former Slave</div>
+        <p>Born into slavery, Epictetus earned his freedom and became one of the most
+          influential Stoic teachers. His <em>Discourses</em> and <em>Enchiridion</em> focus
+          on the dichotomy of control: distinguishing what is up to us from what is not.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Core Teachings</div>
+    <div class="section-title">Key Stoic Principles</div>
+    <ul class="principles-list">
+      <li>
+        <span class="num">I</span>
+        <div class="content"><strong>The Dichotomy of Control</strong> &mdash; Focus only on what you can
+          control (your thoughts, actions, responses) and accept what you cannot (others&rsquo;
+          behavior, external events, the past).</div>
+      </li>
+      <li>
+        <span class="num">II</span>
+        <div class="content"><strong>Amor Fati</strong> &mdash; Love of fate. Not merely accepting what
+          happens, but embracing it as necessary and good. Every obstacle is material for
+          virtue to work on.</div>
+      </li>
+      <li>
+        <span class="num">III</span>
+        <div class="content"><strong>Memento Mori</strong> &mdash; Remember that you will die. This is not
+          morbid pessimism but a call to urgency: live fully now, waste nothing, let no
+          day pass without purpose.</div>
+      </li>
+      <li>
+        <span class="num">IV</span>
+        <div class="content"><strong>Premeditatio Malorum</strong> &mdash; The premeditation of adversity.
+          Visualize challenges before they arrive so they cannot ambush you. The prepared
+          mind is the resilient mind.</div>
+      </li>
+      <li>
+        <span class="num">V</span>
+        <div class="content"><strong>Sympatheia</strong> &mdash; The interconnectedness of all things.
+          We are parts of a larger whole, and our actions ripple outward. What injures the
+          hive injures the bee.</div>
+      </li>
+    </ul>
+
+    <div class="quote-block">
+      &ldquo;It is not things that disturb us, but our judgments about things.&rdquo;
+      <cite>&mdash; Epictetus, Enchiridion</cite>
+    </div>
+  </div>
+
+  <div class="footer">StoicGPT &mdash; Built by Shubh Srivastava</div>
+</div>
+
+<!-- ═══════ BIBLIOGRAPHY ═══════ -->
+<div class="page" id="page-bibliography">
+  <div class="section">
+    <div class="section-label">Sources</div>
+    <div class="section-title">Primary Texts</div>
+    <p class="section-text">
+      All training data is derived from public domain translations of ancient Stoic texts.
+      These editions were chosen for their accessibility and faithful rendering of the
+      original Greek and Latin.
+    </p>
+    <ul class="bib-list">
+      <li>
+        <span class="bib-author">Marcus Aurelius.</span>
+        <span class="bib-title">Meditations.</span>
+        Translated by George Long. Project Gutenberg, 2001. eBook #2680.
+        <div class="bib-detail">Used as: Stoic Knowledge/The Project Gutenberg.txt</div>
+      </li>
+      <li>
+        <span class="bib-author">Seneca, Lucius Annaeus.</span>
+        <span class="bib-title">Letters to Lucilius.</span>
+        Public domain translation.
+        <div class="bib-detail">Used as: Stoic Knowledge/Letters.txt</div>
+      </li>
+      <li>
+        <span class="bib-author">Seneca, Lucius Annaeus.</span>
+        <span class="bib-title">Seneca&rsquo;s Morals.</span>
+        Public domain translation.
+        <div class="bib-detail">Used as: Stoic Knowledge/Seneca_s Morals.txt</div>
+      </li>
+      <li>
+        <span class="bib-author">Epictetus.</span>
+        <span class="bib-title">Discourses.</span>
+        Public domain translation.
+        <div class="bib-detail">Used as: Stoic Knowledge/Discourses.txt</div>
+      </li>
+      <li>
+        <span class="bib-author">Epictetus.</span>
+        <span class="bib-title">Enchiridion (Handbook).</span>
+        Public domain translation.
+        <div class="bib-detail">Used as: Stoic Knowledge/Enchridion.txt</div>
+      </li>
+    </ul>
+  </div>
+
+  <div class="ornament-divider">&#10038; &nbsp; &#10038; &nbsp; &#10038;</div>
+
+  <div class="section">
+    <div class="section-label">References</div>
+    <div class="section-title">Technical References</div>
+    <ul class="bib-list">
+      <li>
+        <span class="bib-author">Vaswani, A. et al.</span>
+        <span class="bib-title">Attention Is All You Need.</span>
+        NeurIPS 2017.
+        <div class="bib-detail">Foundation of the transformer architecture used in The Forge.</div>
+      </li>
+      <li>
+        <span class="bib-author">Radford, A. et al.</span>
+        <span class="bib-title">Language Models are Unsupervised Multitask Learners.</span>
+        OpenAI, 2019.
+        <div class="bib-detail">GPT-2 architecture and BPE tokenizer used in The Forge.</div>
+      </li>
+      <li>
+        <span class="bib-author">Hu, E. J. et al.</span>
+        <span class="bib-title">LoRA: Low-Rank Adaptation of Large Language Models.</span>
+        ICLR 2022.
+        <div class="bib-detail">LoRA technique used for parameter-efficient fine-tuning of The Oracle.</div>
+      </li>
+      <li>
+        <span class="bib-author">Dettmers, T. et al.</span>
+        <span class="bib-title">QLoRA: Efficient Finetuning of Quantized Language Models.</span>
+        NeurIPS 2023.
+        <div class="bib-detail">4-bit NF4 quantization + LoRA used to fine-tune Qwen on a single GPU.</div>
+      </li>
+      <li>
+        <span class="bib-author">Qwen Team, Alibaba Cloud.</span>
+        <span class="bib-title">Qwen 2.5: A Party of Foundation Models.</span>
+        2024.
+        <div class="bib-detail">Base model for The Oracle fine-tuning.</div>
+      </li>
+      <li>
+        <span class="bib-author">Raschka, S.</span>
+        <span class="bib-title">Build a Large Language Model (From Scratch).</span>
+        Manning Publications, 2024.
+        <div class="bib-detail">Primary reference for The Forge&rsquo;s from-scratch implementation.</div>
+      </li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Tools &amp; Frameworks</div>
+    <div class="section-title">Tech Stack</div>
+    <div class="overview-grid">
+      <div class="overview-card">
+        <h3>PYTORCH</h3>
+        <p>Deep learning framework for model architecture and training.</p>
+      </div>
+      <div class="overview-card">
+        <h3>HUGGING FACE</h3>
+        <p>Transformers, PEFT, and model hosting for The Oracle.</p>
+      </div>
+      <div class="overview-card">
+        <h3>TIKTOKEN</h3>
+        <p>GPT-2 BPE tokenizer for The Forge.</p>
+      </div>
+      <div class="overview-card">
+        <h3>FLASK</h3>
+        <p>Backend web framework serving both models.</p>
+      </div>
+      <div class="overview-card">
+        <h3>BITSANDBYTES</h3>
+        <p>4-bit quantization for efficient inference and training.</p>
+      </div>
+      <div class="overview-card">
+        <h3>RUNPOD</h3>
+        <p>Cloud GPU (RTX 3090) for QLoRA fine-tuning.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">StoicGPT &mdash; Built by Shubh Srivastava</div>
+</div>
+
+<!-- ═══════ ABOUT ═══════ -->
+<div class="page" id="page-about">
+  <div class="section">
+    <div class="section-label">The Builder</div>
+    <div class="section-title">About</div>
+
+    <div class="about-layout">
+      <div class="about-photo">&#9784;</div>
+      <div class="about-info">
+        <h2>Shubh Srivastava</h2>
+        <p class="about-role">Machine Learning &amp; AI</p>
+        <p>
+          Builder of StoicGPT &mdash; a project that explores language model development
+          end to end, from implementing transformer internals by hand to fine-tuning
+          open-source models with modern techniques. Driven by a belief that understanding
+          the fundamentals is the path to building something meaningful.
+        </p>
+        <div class="about-links">
+          <a href="https://github.com/alwayshubh2595" target="_blank">GITHUB</a>
+          <a href="https://www.linkedin.com/in/shubh-srivastava-06a636322" target="_blank">LINKEDIN</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">StoicGPT &mdash; Built by Shubh Srivastava</div>
+</div>
+
+<!-- ═══════ JS ═══════ -->
 <script>
-  const chat      = document.getElementById('chat');
-  const input     = document.getElementById('prompt-input');
-  const sendBtn   = document.getElementById('send-btn');
-  const emptyState = document.getElementById('empty-state');
+// ── Navigation ──
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
+  document.querySelector(`.nav-links a[onclick="showPage('${name}')"]`)?.classList.add('active');
+  document.getElementById('nav-links').classList.remove('open');
+  window.scrollTo(0, 0);
+}
 
-  // auto-resize textarea
-  input.addEventListener('input', () => {
-    input.style.height = 'auto';
-    input.style.height = Math.min(input.scrollHeight, 140) + 'px';
-  });
+function toggleMenu() {
+  document.getElementById('nav-links').classList.toggle('open');
+}
 
-  input.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-  });
-  sendBtn.addEventListener('click', sendMessage);
+// ── Architecture: clickable blocks ──
+document.querySelectorAll('.arch-block').forEach(block => {
+  block.addEventListener('click', () => {
+    const detail = block.dataset.detail;
+    const panel = document.getElementById('detail-' + detail);
+    if (!panel) return;
 
-  function addMessage(role, text) {
-    if (emptyState) emptyState.remove();
+    const wasActive = panel.classList.contains('active');
 
-    const wrap = document.createElement('div');
-    wrap.className = `msg ${role}`;
+    // close all
+    document.querySelectorAll('.arch-detail').forEach(d => d.classList.remove('active'));
+    document.querySelectorAll('.arch-block').forEach(b => b.classList.remove('active'));
 
-    const label = document.createElement('div');
-    label.className = 'label';
-    label.textContent = role === 'user' ? 'YOU' : 'THE ORACLE';
-
-    const bubble = document.createElement('div');
-    bubble.className = 'bubble';
-    bubble.textContent = text;
-
-    wrap.appendChild(label);
-    wrap.appendChild(bubble);
-    chat.appendChild(wrap);
-    chat.scrollTop = chat.scrollHeight;
-    return bubble;
-  }
-
-  function addDivider() {
-    const d = document.createElement('div');
-    d.className = 'divider';
-    d.textContent = '✦';
-    chat.appendChild(d);
-  }
-
-  function typewrite(bubble, text, done) {
-    bubble.textContent = '';
-    bubble.classList.add('cursor');
-    let i = 0;
-    const speed = Math.max(18, Math.min(40, 3000 / text.length));
-    const tick = () => {
-      if (i < text.length) {
-        bubble.textContent += text[i++];
-        chat.scrollTop = chat.scrollHeight;
-        setTimeout(tick, speed);
-      } else {
-        bubble.classList.remove('cursor');
-        if (done) done();
-      }
-    };
-    tick();
-  }
-
-  async function sendMessage() {
-    const prompt = input.value.trim();
-    if (!prompt || sendBtn.disabled) return;
-
-    addMessage('user', prompt);
-    addDivider();
-
-    input.value = '';
-    input.style.height = 'auto';
-    sendBtn.disabled = true;
-
-    const oracleBubble = addMessage('oracle', '…');
-    oracleBubble.classList.add('cursor');
-
-    try {
-      const res = await fetch('/ask', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
-      });
-      const data = await res.json();
-      const reply = data.response || data.error || 'The Oracle is silent.';
-
-      oracleBubble.classList.remove('cursor');
-      typewrite(oracleBubble, reply, () => { sendBtn.disabled = false; input.focus(); });
-
-    } catch {
-      oracleBubble.classList.remove('cursor');
-      oracleBubble.textContent = 'The Oracle could not be reached.';
-      sendBtn.disabled = false;
+    if (!wasActive) {
+      panel.classList.add('active');
+      block.classList.add('active');
+      panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
+  });
+});
 
-    addDivider();
+// ── Chat ──
+const chatMessages = document.getElementById('chat-messages');
+const chatInput    = document.getElementById('chat-input');
+const chatSend     = document.getElementById('chat-send');
+const chatTabDesc  = document.getElementById('chat-tab-desc');
+const chatStats    = document.getElementById('chat-model-stats');
+const chatTabBtns  = document.querySelectorAll('.chat-tab-btn');
+
+let chatTab = 'oracle';
+const chatHistoryStore = { oracle: '', forge: '' };
+
+const CHAT_CONFIG = {
+  oracle: {
+    placeholder: 'Ask the Oracle…',
+    btn: 'CONSULT',
+    desc: 'Fine-tuned Qwen 2.5 1.5B on 7,348 Stoic Q&A pairs',
+    emptyIcon: '⚖',
+    emptyText: 'The Oracle awaits your question.<br/>Speak, and the Stoics shall answer.',
+  },
+  forge: {
+    placeholder: 'Test the Forge…',
+    btn: 'IGNITE',
+    desc: 'Built from scratch — 15M parameter GPT, custom architecture',
+    emptyIcon: '🔥',
+    emptyText: 'The Forge is raw and unrefined.<br/>A transformer built from nothing — test its limits.',
   }
+};
+
+chatTabBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tab = btn.dataset.tab;
+    if (tab === chatTab) return;
+    chatHistoryStore[chatTab] = chatMessages.innerHTML;
+    chatTab = tab;
+    chatTabBtns.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const cfg = CHAT_CONFIG[tab];
+    chatTabDesc.textContent = cfg.desc;
+    chatInput.placeholder = cfg.placeholder;
+    chatSend.textContent = cfg.btn;
+    chatSend.classList.toggle('forge', tab === 'forge');
+    chatInput.classList.toggle('forge-focus', tab === 'forge');
+    chatStats.classList.toggle('visible', tab === 'forge');
+    if (chatHistoryStore[tab]) {
+      chatMessages.innerHTML = chatHistoryStore[tab];
+    } else {
+      chatMessages.innerHTML = `<div class="chat-empty ${tab}" id="chat-empty">
+        <div class="ornament">${cfg.emptyIcon}</div><p>${cfg.emptyText}</p></div>`;
+    }
+    chatInput.focus();
+  });
+});
+
+chatInput.addEventListener('input', () => {
+  chatInput.style.height = 'auto';
+  chatInput.style.height = Math.min(chatInput.scrollHeight, 140) + 'px';
+});
+
+chatInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); }
+});
+chatSend.addEventListener('click', sendChatMessage);
+
+function addChatMsg(role, text) {
+  const empty = document.getElementById('chat-empty');
+  if (empty) empty.remove();
+  const wrap = document.createElement('div');
+  const isForge = chatTab === 'forge';
+  wrap.className = `msg ${role === 'user' ? 'user' : 'bot'}${role !== 'user' && isForge ? ' forge' : ''}`;
+  const label = document.createElement('div');
+  label.className = 'msg-label';
+  label.textContent = role === 'user' ? 'YOU' : (isForge ? 'THE FORGE' : 'THE ORACLE');
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.textContent = text;
+  wrap.appendChild(label);
+  wrap.appendChild(bubble);
+  chatMessages.appendChild(wrap);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+  return bubble;
+}
+
+function addChatDivider() {
+  const d = document.createElement('div');
+  d.className = 'chat-divider';
+  d.textContent = '✦';
+  chatMessages.appendChild(d);
+}
+
+function typewriteChat(bubble, text, done) {
+  bubble.textContent = '';
+  bubble.classList.add('cursor');
+  let i = 0;
+  const speed = Math.max(18, Math.min(40, 3000 / text.length));
+  const tick = () => {
+    if (i < text.length) {
+      bubble.textContent += text[i++];
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      setTimeout(tick, speed);
+    } else {
+      bubble.classList.remove('cursor');
+      if (done) done();
+    }
+  };
+  tick();
+}
+
+async function sendChatMessage() {
+  const prompt = chatInput.value.trim();
+  if (!prompt || chatSend.disabled) return;
+  addChatMsg('user', prompt);
+  addChatDivider();
+  chatInput.value = '';
+  chatInput.style.height = 'auto';
+  chatSend.disabled = true;
+  const botBubble = addChatMsg('bot', '…');
+  botBubble.classList.add('cursor');
+  try {
+    const res = await fetch('/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, tab: chatTab }),
+    });
+    const data = await res.json();
+    const reply = data.response || data.error || 'Silence.';
+    botBubble.classList.remove('cursor');
+    typewriteChat(botBubble, reply, () => { chatSend.disabled = false; chatInput.focus(); });
+  } catch {
+    botBubble.classList.remove('cursor');
+    botBubble.textContent = 'The connection was lost.';
+    chatSend.disabled = false;
+  }
+  addChatDivider();
+}
 </script>
+
 </body>
 </html>

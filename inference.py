@@ -3,7 +3,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from peft import PeftModel
 
 BASE_MODEL = "Qwen/Qwen2.5-1.5B-Instruct"
-ADAPTER_PATH = "stoicgpt-qwen-qlora"
+ADAPTER_PATH = "stoic-gpt-qwen-qlora"
 
 SYSTEM_PROMPT = "You are a Stoic philosopher. Answer with wisdom, clarity, and practical guidance rooted in Stoic teachings."
 
