@@ -410,6 +410,50 @@
         </div>
       </div>
 
+      <!-- Sub-component: KV Cache -->
+      <div style="border: 1px solid var(--border); border-radius: 3px; padding: 24px; margin: 24px 0; background: var(--bg);">
+        <h4 style="font-family: var(--font-display); font-size: 0.8rem; letter-spacing: 0.1em; color: var(--bronze); margin-bottom: 12px;">
+          4e. KV Cache (Inference Optimization)
+        </h4>
+        <p>Without caching, autoregressive generation is wasteful: to generate token <em>t</em>,
+          the model recomputes Keys and Values for all previous tokens 1 through <em>t&minus;1</em>
+          from scratch. For a 200-token response, the first token&rsquo;s K/V is recomputed
+          200 times. KV caching eliminates this redundancy.</p>
+        <p style="margin-top: 12px;"><strong>Prefill phase:</strong> The full prompt is passed through the model in one forward
+          pass. The K and V tensors from every attention layer are stored in a cache &mdash;
+          a list of <code>(K, V)</code> tensor pairs, one per block.</p>
+        <p style="margin-top: 12px;"><strong>Decode phase:</strong> For each new token, only that single token is passed through.
+          Its Query attends to the cached Keys/Values from all previous tokens, then its own
+          K/V is appended to the cache. The cost per token drops from
+          <code>O(seq_len &times; d_model)</code> to <code>O(d_model)</code>.</p>
+        <p style="text-align: center; color: var(--bronze); font-size: 0.9rem; margin: 16px 0; line-height: 2.2;">
+          <strong>Without cache:</strong> <code>model(all_tokens)</code> &times; N steps<br/>
+          <strong>With cache:</strong> <code>model(prompt)</code> once, then <code>model(new_token, cache)</code> &times; N steps
+        </p>
+        <p>The cache is threaded through the model: <code>GPTModel.forward()</code> accepts an optional
+          <code>kv_caches</code> list and a <code>start_pos</code> integer for correct positional
+          embedding. Each <code>MultiHeadAttention</code> layer concatenates new K/V tensors to
+          its cached tensors and returns the updated cache.</p>
+        <div class="detail-grid" style="margin-top: 12px;">
+          <div class="detail-item">
+            <div class="label">CACHE SHAPE PER LAYER</div>
+            <div class="value">(batch, 6 heads, seq_len, 64)</div>
+          </div>
+          <div class="detail-item">
+            <div class="label">TOTAL CACHED TENSORS</div>
+            <div class="value">12 (K + V &times; 6 layers)</div>
+          </div>
+          <div class="detail-item">
+            <div class="label">MEMORY AT MAX CONTEXT</div>
+            <div class="value">~1.2MB</div>
+          </div>
+          <div class="detail-item">
+            <div class="label">SPEEDUP</div>
+            <div class="value">~2&ndash;3&times; for 200-token generation</div>
+          </div>
+        </div>
+      </div>
+
       <!-- Block summary -->
       <div class="detail-grid" style="margin-top: 20px;">
         <div class="detail-item">
@@ -475,65 +519,6 @@
       </div>
     </div>
 
-  </div>
-
-  <div class="ornament-divider">&#10038; &nbsp; &#10038; &nbsp; &#10038;</div>
-
-  <div class="section">
-    <div class="section-label">Inference Optimization</div>
-    <div class="section-title">KV Cache</div>
-    <p class="section-text">
-      Without caching, autoregressive generation is wasteful: to generate token <em>t</em>,
-      the model recomputes Keys and Values for all previous tokens 1 through <em>t&minus;1</em>
-      from scratch. For a 200-token response, this means the first token&rsquo;s K/V is
-      recomputed 200 times. KV caching eliminates this redundancy entirely.
-    </p>
-
-    <div style="border: 1px solid var(--border); border-radius: 3px; padding: 24px; margin: 24px 0; background: var(--surface);">
-      <h4 style="font-family: var(--font-display); font-size: 0.8rem; letter-spacing: 0.1em; color: var(--gold); margin-bottom: 12px;">
-        How It Works
-      </h4>
-      <p><strong>Prefill phase:</strong> The full prompt is passed through the model in one forward
-        pass. The Key and Value tensors from every attention layer are computed and stored
-        in a cache &mdash; a list of <code>(K, V)</code> tensor pairs, one per transformer block.</p>
-      <p style="margin-top: 12px;"><strong>Decode phase:</strong> For each new token, only that single token is passed through
-        the model. Its Query attends to the cached Keys/Values from all previous tokens,
-        then its own K/V is appended to the cache. The computational cost per token drops
-        from <code>O(seq_len &times; d_model)</code> to <code>O(d_model)</code>.</p>
-    </div>
-
-    <p style="text-align: center; color: var(--gold); font-size: 0.95rem; margin: 20px 0; line-height: 2.2;">
-      <strong>Without cache:</strong> <code>model(all_tokens)</code> &times; N steps<br/>
-      <strong>With cache:</strong> <code>model(prompt)</code> once, then <code>model(new_token, cache)</code> &times; N steps
-    </p>
-
-    <div style="border: 1px solid var(--border); border-radius: 3px; padding: 24px; margin: 24px 0; background: var(--surface);">
-      <h4 style="font-family: var(--font-display); font-size: 0.8rem; letter-spacing: 0.1em; color: var(--gold); margin-bottom: 12px;">
-        Implementation Details
-      </h4>
-      <p>The cache is threaded through the model: <code>GPTModel.forward()</code> accepts an optional
-        <code>kv_caches</code> list (one entry per layer) and a <code>start_pos</code> integer
-        for correct positional embedding. Each <code>MultiHeadAttention</code> layer concatenates
-        new K/V tensors to its cached tensors and returns the updated cache.</p>
-      <div class="detail-grid" style="margin-top: 12px;">
-        <div class="detail-item">
-          <div class="label">CACHE SHAPE PER LAYER</div>
-          <div class="value">(batch, 6 heads, seq_len, 64)</div>
-        </div>
-        <div class="detail-item">
-          <div class="label">TOTAL CACHED TENSORS</div>
-          <div class="value">12 (K + V &times; 6 layers)</div>
-        </div>
-        <div class="detail-item">
-          <div class="label">MEMORY AT MAX CONTEXT</div>
-          <div class="value">~1.2MB (256 &times; 384 &times; 2 &times; 6 &times; 4 bytes)</div>
-        </div>
-        <div class="detail-item">
-          <div class="label">SPEEDUP</div>
-          <div class="value">~2&ndash;3&times; for 200-token generation</div>
-        </div>
-      </div>
-    </div>
   </div>
 
   <div class="ornament-divider">&#10038; &nbsp; &#10038; &nbsp; &#10038;</div>
